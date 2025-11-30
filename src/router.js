@@ -1,14 +1,18 @@
-import Vue from 'vue'
-import Router from 'vue-router'
-import Words from './views/Words.vue'
-import New from './views/New.vue'
-import Edit from './views/Edit.vue'
-import Show from './views/Show.vue'
-import Test from './views/Test.vue'
+import Vue from 'vue';
+import Router from 'vue-router';
+import axios from 'axios';
 
-Vue.use(Router)
+import Words from './views/Words.vue';
+import New from './views/New.vue';
+import Edit from './views/Edit.vue';
+import Show from './views/Show.vue';
+import Test from './views/Test.vue';
+import Login from './views/Login.vue';
+import Register from './views/Register.vue';
 
-export default new Router({
+Vue.use(Router);
+
+const router = new Router({
   mode: 'history',
   base: process.env.BASE_URL,
   linkActiveClass: 'active',
@@ -25,7 +29,8 @@ export default new Router({
     {
       path: '/words/new',
       name: 'new',
-      component: New
+      component: New,
+      meta: { requiresAuth: true }
     },
     {
       path: '/words/:id',
@@ -35,13 +40,45 @@ export default new Router({
     {
       path: '/words/:id/edit',
       name: 'edit',
-      component: Edit
+      component: Edit,
+      meta: { requiresAuth: true }
     },
     {
       path: '/test',
       name: 'test',
       component: Test
+    },
+    {
+      path: '/login',
+      name: 'login',
+      component: Login
+    },
+    {
+      path: '/register',
+      name: 'register',
+      component: Register
     }
   ]
-
 });
+
+router.beforeEach(async (to, from, next) => {
+  if (!to.matched.some(record => record.meta.requiresAuth)) {
+    return next();
+  }
+
+  try {
+    const res = await axios.get('http://localhost:3000/auth/me', {
+      withCredentials: true
+    });
+
+    if (res.data) {
+      return next();
+    }
+  } catch (err) {
+    console.error('Guard: not logged in or /auth/me failed', err);
+  }
+
+  next('/login');
+});
+
+export default router;

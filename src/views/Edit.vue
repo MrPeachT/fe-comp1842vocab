@@ -1,7 +1,16 @@
 <template>
   <div>
-    <h1>Edit Word</h1>
-    <word-form :word="word" @createOrUpdate="createOrUpdate" />
+    <h1 style="text-align: center;">Edit Word</h1>
+
+    <word-form
+      v-if="loaded"
+      :word="word"
+      @createOrUpdate="createOrUpdate"
+    />
+
+    <div v-else style="margin-top: 2rem; text-align: center;">
+      <div class="ui active inline loader"></div>
+    </div>
 
     <div style="margin-top: 20px; text-align: center;">
       <router-link :to="{ name: 'words' }" class="ui button red">
@@ -16,21 +25,51 @@ import WordForm from "../components/WordForm.vue";
 import { api } from "../helpers/helpers";
 
 export default {
-  name: "edit",
+  name: "edit-word",
   components: { WordForm },
   data() {
-    return { word: {} };
+    return {
+      word: {
+        _id: null,        
+        english: "",
+        german: "",
+        vietnamese: "",
+        imageUrl: ""
+      },
+      loaded: false
+    };
   },
-  async mounted() {
-    this.word = await api.getWord(this.$route.params.id);
+  async created() {
+    try {
+      const id = this.$route.params.id;
+
+      const data = await api.getWord(id);
+
+      this.word = {
+        _id: data._id,                        
+        english: data.english || "",
+        german: data.german || "",
+        vietnamese: data.vietnamese || "",
+        imageUrl: data.imageUrl || ""
+      };
+
+      this.loaded = true;
+    } catch (err) {
+      console.error(err);
+      this.flash("Failed to load word", "error");
+      this.$router.push({ name: "words" });
+    }
   },
   methods: {
     async createOrUpdate(word) {
-      const res = await api.updateWord(word);
+      try {
+        await api.updateWord(word);
 
-      this.flash("Word updated successfully!", "success");
-
-      this.$router.push(`/words/${res._id}`);
+        this.flash("Word updated successfully!", "success");
+        this.$router.push({ name: "words" });
+      } catch (err) {
+        console.error(err);
+      }
     }
   }
 };

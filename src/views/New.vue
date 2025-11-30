@@ -1,7 +1,11 @@
 <template>
   <div>
     <h1 style="text-align: center;">Create New Word</h1>
-    <word-form @createOrUpdate="createOrUpdate" />
+
+    <word-form
+      :word="word"
+      @createOrUpdate="createOrUpdate"
+    />
   </div>
 </template>
 
@@ -12,13 +16,26 @@ import { api } from "../helpers/helpers";
 export default {
   name: "new-word",
   components: { WordForm },
+
+  data() {
+    return {
+      word: {
+        english: "",
+        german: "",
+        vietnamese: "",
+        imageUrl: ""   
+      }
+    };
+  },
+
   methods: {
     async createOrUpdate(word) {
-      const res = await api.createWord(word);
+      try {
+        await api.createWord(word);
 
-      this.flash("Word created successfully!", "success");
-
-      this.$router.push(`/words/`);
+        this.flash("Word created successfully!", "success");
+        this.$router.push(`/words/`);
+      } catch (err) {}
     }
   }
 };

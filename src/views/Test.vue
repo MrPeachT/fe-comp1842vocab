@@ -2,11 +2,18 @@
   <div>
     <h2 class="ui header" style="text-align: center;">Test Yourself</h2>
 
-    <div v-if="!current" style="display: flex; justify-content: center; margin-top: 1rem;">
-      <button class="ui button primary" @click="next">Start Test</button>
+    <div
+      v-if="!current"
+      style="display: flex; justify-content: center; margin-top: 1rem;"
+    >
+      <button class="ui button primary" @click="start">Start Test</button>
     </div>
 
-    <div v-else class="ui segment">
+    <div
+      v-else
+      class="ui segment"
+      style="max-width: 500px; margin: 1rem auto;"
+    >
       <h3>
         What is the
         <span v-if="targetLang === 'german'">German</span>
@@ -14,29 +21,71 @@
         word for:
       </h3>
 
-      <p><strong>{{ current.english }}</strong></p>
+      <p style="text-align: center;"><strong>{{ current.english }}</strong></p>
 
-      <div class="ui form">
-        <input
-          type="text"
-          v-model="answer"
-          :placeholder="targetLang === 'german' ? 'Type German...' : 'Type Vietnamese...'"
+      <div
+        v-if="current.imageUrl"
+        style="
+          margin: 0.75rem 0 1rem;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          width: 100%;
+          "
+        >
+        <img
+          :src="current.imageUrl"
+          :alt="`Image for ${current.english}`"
+          style="max-height: 180px; object-fit: contain;"
         />
       </div>
 
-      <div style="display: flex; justify-content: center; margin-top: 1rem;">
+      <div class="ui form">
+        <div class="field">
+          <input
+            type="text"
+            v-model="answer"
+            :placeholder="targetLang === 'german'
+              ? 'Type German...'
+              : 'Type Vietnamese...'"
+            @keyup.enter="check"
+          />
+        </div>
+      </div>
+
+      <div style="margin-top: 1rem; justify-content: center; display: flex; gap: 0.5rem;">
         <button class="ui button green" @click="check">Check</button>
-        <button class="ui button blue" @click="next">Next</button>
+        <button class="ui button blue" @click="next">Skip / Next</button>
         <button class="ui button red" @click="current = null">End Test</button>
+      </div>
+
+      <div style="margin-top: 1rem; justify-content: center; display: flex; gap: 0.5rem;">
+        <div class="ui buttons">
+          <button
+            class="ui button"
+            :class="{ positive: targetLang === 'german' }"
+            @click="setTarget('german')"
+          >
+            German
+          </button>
+          <button
+            class="ui button"
+            :class="{ positive: targetLang === 'vietnamese' }"
+            @click="setTarget('vietnamese')"
+          >
+            Vietnamese
+          </button>
+        </div>
       </div>
 
       <div
         v-if="result"
         class="ui message"
         :class="result.correct ? 'positive' : 'negative'"
+        style="margin-top: 1rem;"
       >
         <p>{{ result.message }}</p>
-        <p v-if="!result.correct">
+        <p>
           Correct answer:
           <strong>
             {{ targetLang === 'german' ? current.german : current.vietnamese }}
@@ -51,45 +100,67 @@
 import { api } from "../helpers/helpers";
 
 export default {
-  name: "Test",
+  name: "test-words",
   data() {
     return {
       words: [],
       current: null,
-      targetLang: "german", 
       answer: "",
+      targetLang: "german",
       result: null
     };
   },
-  async mounted() {
-    this.words = await api.getWords();
+  async created() {
+    try {
+      const res = await api.getWords();
+      this.words = res.data || res;
+    } catch (e) {
+      this.flash("Failed to load words for test", "error");
+    }
   },
   methods: {
+    start() {
+      if (!this.words.length) {
+        this.flash("No words available to test.", "warning");
+        return;
+      }
+      this.next();
+    },
     next() {
-      if (!this.words.length) return;
+      if (!this.words.length) {
+        this.current = null;
+        return;
+      }
 
-      this.current = this.words[Math.floor(Math.random() * this.words.length)];
+      const index = Math.floor(Math.random() * this.words.length);
+      const word = this.words[index];
 
-      this.targetLang = Math.random() < 0.5 ? "german" : "vietnamese";
+      if (word.imageUrl == null) {
+        word.imageUrl = "";
+      }
 
+      this.current = word;
       this.answer = "";
       this.result = null;
+    },
+    setTarget(lang) {
+      this.targetLang = lang;
+      this.result = null;
+      this.answer = "";
     },
     check() {
       if (!this.current) return;
 
-      const correctValue =
+      const user = (this.answer || "").trim().toLowerCase();
+      const correct =
         this.targetLang === "german"
-          ? this.current.german
-          : this.current.vietnamese;
-
-      const user = this.answer.trim().toLowerCase();
-      const correct = (correctValue || "").trim().toLowerCase();
+          ? (this.current.german || "").trim().toLowerCase()
+          : (this.current.vietnamese || "").trim().toLowerCase();
 
       if (!user) {
         this.result = {
           correct: false,
-          message: "Please type an answer first."
+          message: "Please type an answer."
         };
         return;
       }
